@@ -6,7 +6,7 @@ function compile(julia_program_file, julia_install_path,
     filename = split(julia_program_file, ".")[1]
     O_FILE = "$(filename).o"
 
-    SYS_LIB = joinpath(julia_install_path, "lib", "julia", "sys.so")
+    SYS_LIB = joinpath(julia_install_path, "lib", "julia", "sys." * (is_apple() ? "dylib" : "so"))
     JULIA_EXE = joinpath(julia_install_path, "bin", "julia")
     LIB_PATH = joinpath(julia_install_path, "lib")
     SO_FILE = "lib$(filename).$(Libdl.dlext)"
@@ -37,12 +37,12 @@ function compile(julia_program_file, julia_install_path,
 end
 
 
-if length(ARGS) < 2
-    println("Usage: $(@__FILE__) <Julia Program file> <Julia installation Path> [Julia Package Directory]")
+if length(ARGS) < 1
+    println("Usage: $(@__FILE__) <Julia Program file> [Julia installation Path [Julia Package Directory]]")
     exit(1)
 end
 JULIA_PROGRAM_FILE = ARGS[1]
-JULIA_INSTALL_PATH = ARGS[2]
+JULIA_INSTALL_PATH = length(ARGS) > 1 ? ARGS[2] : dirname(JULIA_HOME)
 
 println("Program File : $JULIA_PROGRAM_FILE")
 println("Julia Install Path: $JULIA_INSTALL_PATH")
