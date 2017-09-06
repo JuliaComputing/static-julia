@@ -6,7 +6,7 @@ function compile(julia_program_file, julia_install_path,
     filename = split(julia_program_file, ".")[1]
     O_FILE = "$(filename).o"
 
-    SYS_LIB = joinpath(julia_install_path, "lib", "julia", "sys.so")
+    SYS_LIB = joinpath(julia_install_path, "lib", "julia", "sys.$(Libdl.dlext)")
     JULIA_EXE = joinpath(julia_install_path, "bin", "julia")
     LIB_PATH = joinpath(julia_install_path, "lib")
     SO_FILE = "lib$(filename).$(Libdl.dlext)"
@@ -28,8 +28,15 @@ function compile(julia_program_file, julia_install_path,
     ldlibs = Base.shell_split(readstring(`$(JULIA_EXE) $(joinpath(julia_install_path, "share", "julia", "julia-config.jl")) --ldlibs`))
 
     if is_windows()
-        run(`x86_64-w64-mingw32-gcc -m64 -fPIC -shared -o $(SO_FILE) $(O_FILE) $(ldflags) $(ldlibs)`)
-        run(`x86_64-w64-mingw32-gcc -m64 program.c -o $(filename).exe $(SO_FILE) $(cflags) $(ldflags) $(ldlibs) -lopenlibm -Wl,-rpath,\$ORIGIN`)
+        gpp = Pkg.dir("WinRPM","deps","usr","x86_64-w64-mingw32","sys-root","mingw","bin","g++")
+        gcc = Pkg.dir("WinRPM","deps","usr","x86_64-w64-mingw32","sys-root","mingw","bin","gcc")
+        RPMbindir = Pkg.dir("WinRPM","deps","usr","x86_64-w64-mingw32","sys-root","mingw","bin")
+        incdir = Pkg.dir("WinRPM","deps","usr","x86_64-w64-mingw32","sys-root","mingw","include")
+
+        push!(Base.Libdl.DL_LOAD_PATH, RPMbindir)
+        ENV["PATH"] = ENV["PATH"] * ";" * RPMbindir
+        run(`$gpp -m64 -fPIC -shared -o $(SO_FILE) $(O_FILE) $(ldflags) $(ldlibs)`)
+        run(`$gcc -m64  program.c -o $(filename) $(SO_FILE) $(O_FILE) $(cflags) $(ldflags) $(ldlibs) -I$incdir -lopenlibm -Wl,-rpath,\$ORIGIN`)
     else
         run(`g++ -m64 -fPIC -shared -o $(SO_FILE) $(O_FILE) $(ldflags) $(ldlibs)`)
         run(`gcc -m64 program.c -o $(filename) $(SO_FILE) $(cflags) $(ldflags) $(ldlibs) -lm -Wl,-rpath,\$ORIGIN`)
@@ -37,12 +44,12 @@ function compile(julia_program_file, julia_install_path,
 end
 
 
-if length(ARGS) < 2
+if length(ARGS) < 1
     println("Usage: $(@__FILE__) <Julia Program file> <Julia installation Path> [Julia Package Directory]")
     exit(1)
 end
 JULIA_PROGRAM_FILE = ARGS[1]
-JULIA_INSTALL_PATH = ARGS[2]
+JULIA_INSTALL_PATH = length(ARGS) > 1 ? ARGS[2] : dirname(JULIA_HOME)
 
 println("Program File : $JULIA_PROGRAM_FILE")
 println("Julia Install Path: $JULIA_INSTALL_PATH")
