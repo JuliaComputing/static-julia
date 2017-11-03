@@ -14,7 +14,7 @@ function main(args)
             arg_type = String
             required = true
         "cprog"
-            help = "c program to compile (if not provided, a minimal standard program is used)"
+            help = "c program to compile (if not provided, a minimal standard program is used; only used when building an executable)"
             arg_type = String
             default = nothing
         "builddir"
@@ -87,7 +87,7 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
     else
         c_program = abspath(c_program)
     end
-    if !isfile(c_program)
+    if !isfile(c_program) && executable
         error("Cannot find file:\n\"$c_program\"")
     end
     if !quiet
