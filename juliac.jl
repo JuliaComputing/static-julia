@@ -45,7 +45,7 @@ function main(args)
         "--target", "-t"
             help = "compilations target"
             arg_type = String
-            default = "x86-64"
+            default = "generic"
     end
 
     parsed_args = parse_args(args, s)
@@ -155,7 +155,8 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
                    "include(\"$julia_program\"); push!(Base.LOAD_CACHE_PATH, \"$julia_pkglibdir\"); empty!(Base.LOAD_CACHE_PATH)"`
         # set compilation target
         for i in eachindex(command.exec)
-            command.exec[i] = replace(command.exec[i], "x86-64", target)
+            cmd = command.exec[i]
+            startswith(cmd, "-C") && command.exec[i] = "-C$target"
         end
         if verbose
             println("Build object file \"$o_file\":\n$command")
