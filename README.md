@@ -1,11 +1,11 @@
-## Building a shared library and executable from your julia code
+## Julia AOT compiler
 
 1. Make sure all the packages and modules used by `hello.jl` are precompiled.
    The `juliac.jl` script uses the `ArgParse` package, make sure it is installed as well.
 
 2. Clone this repo and use the `juliac.jl` script. The way to call it is as follows:
 
-   Usage: `juliac.jl [-v] [-q] [-o] [-s] [-e] [-j] [-h] juliaprog [cprog] [builddir]`
+   Usage: `juliac.jl [-v] [-q] [-o] [-s] [-e] [-j] [-c] [-h] juliaprog [cprog] [builddir]`
 
    Examples:
    ```
@@ -16,7 +16,7 @@
    julia juliac.jl -h                          # print help message
    ```
 
-   Note: `hello.jl` does not need to be in the `static-julia` directory.
+   Note: `juliaprog` and `cprog` do not need to be in the `static-julia` directory.
 
 3. A shared library containing the system image `libhello.so`, and a
    driver binary `hello` are created in the `builddir` directory.
@@ -43,6 +43,9 @@
        └─────────────────────────────────────────────────┘
        1                                       10
 ```
+
+   Note: to use on Windows, install `Cygwin` and the `mingw64-x86_64-gcc-core` package,
+         see: https://github.com/JuliaLang/julia/blob/master/README.windows.md
 
 ## Under the hood
 

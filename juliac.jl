@@ -6,7 +6,7 @@ using ArgParse
 
 function main(args)
 
-    s = ArgParseSettings("Static AOT Julia compilation.")
+    s = ArgParseSettings("Julia AOT compiler")
 
     @add_arg_table s begin
         "juliaprog"
@@ -158,11 +158,11 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
     end
 
     if shared || executable
+        cc = is_windows() ? "x86_64-w64-mingw32-gcc" : "gcc"
         command = `$(Base.julia_cmd()) $(joinpath(dirname(JULIA_HOME), "share", "julia", "julia-config.jl"))`
         cflags = Base.shell_split(readstring(`$command --cflags`))
         ldflags = Base.shell_split(readstring(`$command --ldflags`))
         ldlibs = Base.shell_split(readstring(`$command --ldlibs`))
-        cc = is_windows() ? "x86_64-w64-mingw32-gcc" : "gcc"
     end
 
     if shared || executable
@@ -187,7 +187,7 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
         run(command)
     end
 
-    if delete_object && isfile(o_file)
+    if delete_object
         if verbose
             println("Delete object file \"$o_file\"")
         end
@@ -222,7 +222,7 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
                 sync = true
             end
         end
-        if !sync
+        if verbose && !sync
             println(" none")
         end
     end
