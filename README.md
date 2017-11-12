@@ -5,15 +5,19 @@
 
 2. Clone this repo and use the `juliac.jl` script. The way to call it is as follows:
 
-   Usage: `juliac.jl [-v] [-q] [-o] [-s] [-e] [-j] [-c] [-h] juliaprog [cprog] [builddir]`
+   Usage: `juliac.jl [-v] [-q] [-o] [-s] [-e] [-j] [-y] [-c] [-h] juliaprog [cprog] [builddir]`
 
    Examples:
    ```
-   julia juliac.jl -ve hello.jl                # verbose, create an executable
-   julia juliac.jl -ve hello.jl myprogram.c    # embed into a user defined c program
-   julia juliac.jl --quiet --object hello.jl   # builds just the `hello.o` object file
-   julia juliac.jl -vosej hello.jl buildtest   # build object, shared lib, exec, and sync julia libs
-   julia juliac.jl -h                          # print help message
+   julia juliac.jl -ve hello.jl              # verbose, build shared library and executable (to build the
+                                             # shared lib, first build the object file and then delete it)
+   julia juliac.jl --quiet --object hello.jl # quiet, build object file
+   julia juliac.jl -vsy hello.jl             # build shared library only (assume object file available,
+                                             # and do not delete it after build is finished)
+   julia juliac.jl -vey hello.jl             # build executable only (assume shared library available)
+   julia juliac.jl -ve hello.jl myprogram.c  # embed into a user defined c program
+   julia juliac.jl -vosej hello.jl buildtest # build object, shared lib, executable, and sync julia libs
+   julia juliac.jl -h                        # print help message
    ```
 
    Note: `juliaprog` and `cprog` do not need to be in the `static-julia` directory.

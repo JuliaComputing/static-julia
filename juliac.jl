@@ -39,6 +39,9 @@ function main(args)
         "--julialibs", "-j"
             help = "sync julia libraries to builddir"
             action = :store_true
+        "--only", "-y"
+            help = "perform only explicitly requested actions"
+            action = :store_true
         "--clean", "-c"
             help = "delete builddir"
             action = :store_true
@@ -63,12 +66,13 @@ function main(args)
         parsed_args["shared"],
         parsed_args["executable"],
         parsed_args["julialibs"],
+        parsed_args["only"],
         parsed_args["clean"]
     )
 end
 
 function julia_compile(julia_program, c_program=nothing, build_dir="builddir", verbose=false, quiet=false,
-                       object=false, shared=false, executable=true, julialibs=true, clean=false)
+                       object=false, shared=false, executable=true, julialibs=true, only=false, clean=false)
 
     if verbose && quiet
         verbose = false
@@ -144,17 +148,13 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
         julia_pkglibdir = replace(julia_pkglibdir, "\\", "\\\\")
     end
 
-    delete_object = false
-    if object || shared || executable
+    if object || (shared || executable) && !only
         command = `"$(Base.julia_cmd())" "--startup-file=no" "--output-o" "$o_file" "-e"
                    "include(\"$julia_program\"); push!(Base.LOAD_CACHE_PATH, \"$julia_pkglibdir\"); empty!(Base.LOAD_CACHE_PATH)"`
         if verbose
             println("Build object file \"$o_file\":\n$command")
         end
         run(command)
-        if !object
-            delete_object = true
-        end
     end
 
     if shared || executable
@@ -165,7 +165,7 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
         ldlibs = Base.shell_split(readstring(`$command --ldlibs`))
     end
 
-    if shared || executable
+    if shared || executable && !only
         command = `$cc -m64 -shared -o $s_file $o_file $cflags $ldflags $ldlibs`
         if is_windows()
             command = `$command -Wl,--export-all-symbols`
@@ -187,7 +187,7 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
         run(command)
     end
 
-    if delete_object
+    if !object && (shared || executable) && !only
         if verbose
             println("Delete object file \"$o_file\"")
         end
