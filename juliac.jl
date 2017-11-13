@@ -42,6 +42,10 @@ function main(args)
         "--clean", "-c"
             help = "delete builddir"
             action = :store_true
+        "--target", "-t"
+            help = "compilations target"
+            arg_type = String
+            default = "generic"
     end
 
     parsed_args = parse_args(args, s)
@@ -63,12 +67,13 @@ function main(args)
         parsed_args["shared"],
         parsed_args["executable"],
         parsed_args["julialibs"],
-        parsed_args["clean"]
+        parsed_args["clean"],
+        parsed_args["target"]
     )
 end
 
 function julia_compile(julia_program, c_program=nothing, build_dir="builddir", verbose=false, quiet=false,
-                       object=false, shared=false, executable=true, julialibs=true, clean=false)
+                       object=false, shared=false, executable=true, julialibs=true, clean=false, target="x86-64")
 
     if verbose && quiet
         verbose = false
@@ -148,6 +153,11 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
     if object || shared || executable
         command = `"$(Base.julia_cmd())" "--startup-file=no" "--output-o" "$o_file" "-e"
                    "include(\"$julia_program\"); push!(Base.LOAD_CACHE_PATH, \"$julia_pkglibdir\"); empty!(Base.LOAD_CACHE_PATH)"`
+        # set compilation target
+        for i in eachindex(command.exec)
+            cmd = command.exec[i]
+            startswith(cmd, "-C") && command.exec[i] = "-C$target"
+        end
         if verbose
             println("Build object file \"$o_file\":\n$command")
         end
