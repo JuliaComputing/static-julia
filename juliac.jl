@@ -86,7 +86,7 @@ function main(args)
             metavar = "{yes|no|error}"
             range_tester = (x -> x == "yes" || x == "no" || x == "error")
             help = "set syntax and method deprecation warnings"
-        "--auto", "-a"
+        "--autodeps", "-a"
             action = :store_true
             help = "automatically build required dependencies"
         "--object", "-o"
@@ -105,10 +105,10 @@ function main(args)
 
     s.epilog = """
         examples:\n
-        \ua0\ua0juliac.jl -vae hello.jl          # verbose, auto, build executable\n
-        \ua0\ua0juliac.jl -vae hello.jl myprog.c # embed into user defined C program\n
-        \ua0\ua0juliac.jl -qo hello.jl           # quiet, build object file only\n
-        \ua0\ua0juliac.jl -vosej hello.jl        # build all and sync Julia libs\n
+        \ua0\ua0juliac.jl -vae hello.jl        # verbose, build executable and deps\n
+        \ua0\ua0juliac.jl -vae hello.jl prog.c # embed into user defined C program\n
+        \ua0\ua0juliac.jl -qo hello.jl         # quiet, build object file only\n
+        \ua0\ua0juliac.jl -vosej hello.jl      # build all and sync Julia libs\n
         """
 
     parsed_args = parse_args(args, s)
@@ -134,7 +134,7 @@ function main(args)
         parsed_args["check-bounds"],
         parsed_args["math-mode"],
         parsed_args["depwarn"],
-        parsed_args["auto"],
+        parsed_args["autodeps"],
         parsed_args["object"],
         parsed_args["shared"],
         parsed_args["executable"],
@@ -145,11 +145,11 @@ end
 function julia_compile(julia_program, c_program=nothing, build_dir="builddir", verbose=false, quiet=false,
                        clean=false, sysimage = nothing, compile=nothing, cpu_target=nothing, optimize=nothing,
                        debug=nothing, inline=nothing, check_bounds=nothing, math_mode=nothing, depwarn=nothing,
-                       auto=false, object=false, shared=false, executable=true, julialibs=true)
+                       autodeps=false, object=false, shared=false, executable=true, julialibs=true)
 
     verbose && quiet && (verbose = false)
 
-    if auto
+    if autodeps
         executable && (shared = true)
         shared && (object = true)
     end

@@ -40,7 +40,7 @@ optional arguments:
                         set floating point optimizations
   --depwarn {yes|no|error}
                         set syntax and method deprecation warnings
-  -a, --auto            automatically build required dependencies
+  -a, --autodeps        automatically build required dependencies
   -o, --object          build object file
   -s, --shared          build shared library
   -e, --executable      build executable file
@@ -49,10 +49,10 @@ optional arguments:
   -h, --help            show this help message and exit
 
 examples:
-  juliac.jl -vae hello.jl          # verbose, auto, build executable
-  juliac.jl -vae hello.jl myprog.c # embed into user defined C program
-  juliac.jl -qo hello.jl           # quiet, build object file only
-  juliac.jl -vosej hello.jl        # build all and sync Julia libs
+  juliac.jl -vae hello.jl        # verbose, build executable and deps
+  juliac.jl -vae hello.jl prog.c # embed into user defined C program
+  juliac.jl -qo hello.jl         # quiet, build object file only
+  juliac.jl -vosej hello.jl      # build all and sync Julia libs
 ```
 
 ### Notes
