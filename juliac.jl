@@ -6,8 +6,7 @@ using ArgParse
 
 function main(args)
 
-    s = ArgParseSettings("Julia AOT compiler" *
-                         "\n\nhelper script to build libraries and executables from Julia code",
+    s = ArgParseSettings("Static Julia Compiler",
                          version = "$(basename(@__FILE__)) version 0.6",
                          add_version = true)
 
@@ -19,7 +18,7 @@ function main(args)
         "cprog"
             arg_type = String
             default = nothing
-            help = "C program to compile (required only when building an executable; if not provided a minimal standard program is used)"
+            help = "C program to compile (required only when building an executable; if not provided a minimal driver program is used)"
         "builddir"
             arg_type = String
             default = "builddir"
@@ -113,7 +112,8 @@ function main(args)
 
     parsed_args = parse_args(args, s)
 
-    if !any([parsed_args["clean"], parsed_args["object"], parsed_args["shared"], parsed_args["executable"], parsed_args["julialibs"]])
+    # TODO: in future it may be possible to broadcast dictionary indexing, see: https://discourse.julialang.org/t/accessing-multiple-values-of-a-dictionary/8648
+    if !any(getindex.(parsed_args, ["clean", "object", "shared", "executable", "julialibs"]))
         parsed_args["quiet"] || println("Nothing to do, exiting\nTry \"$(basename(@__FILE__)) -h\" for more information")
         exit(0)
     end
@@ -147,7 +147,7 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
                        debug=nothing, inline=nothing, check_bounds=nothing, math_mode=nothing, depwarn=nothing,
                        autodeps=false, object=false, shared=false, executable=true, julialibs=true)
 
-    verbose && quiet && (verbose = false)
+    verbose && quiet && (quiet = false)
 
     if autodeps
         executable && (shared = true)
@@ -222,11 +222,12 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
   push!(Base.LOAD_CACHE_PATH, abspath(\"$tmp_dir\")) # enable usage of precompiled files
   include($(repr(julia_program))) # include \"julia_program\" file
   empty!(Base.LOAD_CACHE_PATH) # reset / remove build-system-relative paths"
+        isdir(tmp_dir) || mkpath(tmp_dir)
         command = `$julia_cmd -e $expr`
-        verbose && println("Build \".ji\" files:\n  $command")
+        verbose && println("Build module image files \".ji\" in subdirectory \"$tmp_dir\":\n  $command")
         run(command)
         command = `$julia_cmd --output-o $(joinpath(tmp_dir, o_file)) -e $expr`
-        verbose && println("Build object file \"$o_file\":\n  $command")
+        verbose && println("Build object file \"$o_file\" in subdirectory \"$tmp_dir\":\n  $command")
         run(command)
     end
 
@@ -245,7 +246,7 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
         elseif is_windows()
             command = `$command -Wl,--export-all-symbols`
         end
-        verbose && println("Build shared library \"$s_file\":\n  $command")
+        verbose && println("Build shared library \"$s_file\" in build directory:\n  $command")
         run(command)
     end
 
@@ -257,12 +258,12 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
         elseif is_unix()
             command = `$command -Wl,-rpath,\$ORIGIN`
         end
-        verbose && println("Build executable file \"$e_file\":\n  $command")
+        verbose && println("Build executable file \"$e_file\" in build directory:\n  $command")
         run(command)
     end
 
     if julialibs
-        verbose && println("Sync Julia libraries:")
+        verbose && println("Sync Julia libraries to build directory:")
         libfiles = String[]
         dlext = "." * Libdl.dlext
         for dir in (shlibdir, private_shlibdir)
