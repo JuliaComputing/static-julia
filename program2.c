@@ -41,7 +41,7 @@ int wmain(int argc, wchar_t *wargv[], wchar_t *envp[])
     // initialization
     libsupport_init();
     // jl_options.compile_enabled = JL_OPTIONS_COMPILE_OFF;
-    jl_options.image_file = "libhello";
+    jl_options.image_file = JULIA_LIB_NAME;
     julia_init(JL_IMAGE_JULIA_HOME);
 
     // build arguments array: `String[ unsafe_string(argv[i]) for i in 1:argc ]`
