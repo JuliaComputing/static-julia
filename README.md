@@ -101,7 +101,7 @@ build a binary that runs the julia code.
 
 Instead of a driver script, the generated system image can be embedded
 into a larger program following the embedding examples and relevant
-sections in the Julia manual. Note that the name of the generated system image (`"libhello"` for `hello.jl`) is accessible from C in the preprocessor macro `JULIA_LIB_NAME`.
+sections in the Julia manual. Note that the name of the generated system image (`"libhello"` for `hello.jl`) is accessible from C in the preprocessor macro `JULIAC_PROGRAM_LIBNAME`.
 
 With Julia 0.7, a single large binary can be created, which does not
 require the driver program to load the shared library. An example of
