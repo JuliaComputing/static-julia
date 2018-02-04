@@ -2,12 +2,16 @@
 ## 1. gcc / x86_64-w64-mingw32-gcc is available and is in path
 ## 2. Package ArgParse is installed
 
+# TODO: remove once Julia v0.7 is released
+julia_v07 = VERSION > v"0.7-"
+
 using ArgParse
+julia_v07 && using Libdl
 
 function main(args)
 
     s = ArgParseSettings("Static Julia Compiler",
-                         version = "$(basename(@__FILE__)) version 0.6",
+                         version = "$(basename(@__FILE__)) version 0.7-DEV",
                          add_version = true)
 
     @add_arg_table s begin
@@ -193,12 +197,21 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
     julia_program_basename = splitext(basename(julia_program))[1]
     o_file = julia_program_basename * ".o"
     s_file = "lib" * julia_program_basename * ".$(Libdl.dlext)"
-    e_file = julia_program_basename * (is_windows() ? ".exe" : "")
+    if julia_v07
+        e_file = julia_program_basename * (Sys.iswindows() ? ".exe" : "")
+    else
+        e_file = julia_program_basename * (is_windows() ? ".exe" : "")
+    end
     tmp_dir = "tmp_v$VERSION"
 
     # TODO: these should probably be emitted from julia-config also:
-    shlibdir = is_windows() ? JULIA_HOME : abspath(JULIA_HOME, Base.LIBDIR)
-    private_shlibdir = abspath(JULIA_HOME, Base.PRIVATE_LIBDIR)
+    if julia_v07
+        shlibdir = Sys.iswindows() ? Sys.BINDIR : abspath(Sys.BINDIR, Base.LIBDIR)
+        private_shlibdir = abspath(Sys.BINDIR, Base.PRIVATE_LIBDIR)
+    else
+        shlibdir = is_windows() ? JULIA_HOME : abspath(JULIA_HOME, Base.LIBDIR)
+        private_shlibdir = abspath(JULIA_HOME, Base.PRIVATE_LIBDIR)
+    end
 
     if object
         julia_cmd = `$(Base.julia_cmd())`
@@ -215,13 +228,23 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
         check_bounds == nothing || push!(julia_cmd.exec, "--check-bounds=$check_bounds")
         math_mode == nothing || push!(julia_cmd.exec, "--math-mode=$math_mode")
         depwarn == nothing || (julia_cmd.exec[5] = "--depwarn=$depwarn")
-        is_windows() && (julia_program = replace(julia_program, "\\", "\\\\"))
-        expr = "
-  VERSION >= v\"0.7+\" && Base.init_load_path($(repr(JULIA_HOME))) # initialize location of site-packages
+        if julia_v07
+            Sys.iswindows() && (julia_program = replace(julia_program, "\\", "\\\\"))
+            expr = "
+  Base.init_depot_path() # initialize package depots
+  Base.init_load_path() # initialize location of site-packages
   empty!(Base.LOAD_CACHE_PATH) # reset / remove any builtin paths
   push!(Base.LOAD_CACHE_PATH, abspath(\"$tmp_dir\")) # enable usage of precompiled files
-  include($(repr(julia_program))) # include \"julia_program\" file
+  include(\"$julia_program\") # include \"julia_program\" file
   empty!(Base.LOAD_CACHE_PATH) # reset / remove build-system-relative paths"
+        else
+            is_windows() && (julia_program = replace(julia_program, "\\", "\\\\"))
+            expr = "
+  empty!(Base.LOAD_CACHE_PATH) # reset / remove any builtin paths
+  push!(Base.LOAD_CACHE_PATH, abspath(\"$tmp_dir\")) # enable usage of precompiled files
+  include(\"$julia_program\") # include \"julia_program\" file
+  empty!(Base.LOAD_CACHE_PATH) # reset / remove build-system-relative paths"
+        end
         isdir(tmp_dir) || mkpath(tmp_dir)
         command = `$julia_cmd -e $expr`
         verbose && println("Build module image files \".ji\" in subdirectory \"$tmp_dir\":\n  $command")
@@ -232,31 +255,53 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
     end
 
     if shared || executable
-        command = `$(Base.julia_cmd()) --startup-file=no $(joinpath(dirname(JULIA_HOME), "share", "julia", "julia-config.jl"))`
-        cflags = Base.shell_split(readstring(`$command --cflags`))
-        ldflags = Base.shell_split(readstring(`$command --ldflags`))
-        ldlibs = Base.shell_split(readstring(`$command --ldlibs`))
-        cc = is_windows() ? "x86_64-w64-mingw32-gcc" : "gcc"
+        if julia_v07
+            cc = Sys.iswindows() ? "x86_64-w64-mingw32-gcc" : "gcc"
+            command = `$(Base.julia_cmd()) --startup-file=no $(joinpath(dirname(Sys.BINDIR), "share", "julia", "julia-config.jl"))`
+            flags = `$(Base.shell_split(read(\`$command --allflags\`, String)))`
+        else
+            cc = is_windows() ? "x86_64-w64-mingw32-gcc" : "gcc"
+            command = `$(Base.julia_cmd()) --startup-file=no $(joinpath(dirname(JULIA_HOME), "share", "julia", "julia-config.jl"))`
+            cflags = `$(Base.shell_split(readstring(\`$command --cflags\`)))`
+            ldflags = `$(Base.shell_split(readstring(\`$command --ldflags\`)))`
+            ldlibs = `$(Base.shell_split(readstring(\`$command --ldlibs\`)))`
+            flags = `$cflags $ldflags $ldlibs`
+        end
     end
 
     if shared
-        command = `$cc -m64 -shared -o $s_file $(joinpath(tmp_dir, o_file)) $cflags $ldflags $ldlibs`
-        if is_apple()
-            command = `$command -Wl,-install_name,@rpath/lib$julia_program_basename.dylib`
-        elseif is_windows()
-            command = `$command -Wl,--export-all-symbols`
+        command = `$cc -m64 -shared -o $s_file $(joinpath(tmp_dir, o_file)) $flags`
+        if julia_v07
+            if Sys.isapple()
+                command = `$command -Wl,-install_name,@rpath/\"$s_file\"`
+            elseif Sys.iswindows()
+                command = `$command -Wl,--export-all-symbols`
+            end
+        else
+            if is_apple()
+                command = `$command -Wl,-install_name,@rpath/\"$s_file\"`
+            elseif is_windows()
+                command = `$command -Wl,--export-all-symbols`
+            end
         end
         verbose && println("Build shared library \"$s_file\" in build directory:\n  $command")
         run(command)
     end
 
     if executable
-        push!(cflags, "-DJULIAC_PROGRAM_LIBNAME=\"lib$julia_program_basename\"")
-        command = `$cc -m64 -o $e_file $c_program $s_file $cflags $ldflags $ldlibs`
-        if is_apple()
-            command = `$command -Wl,-rpath,@executable_path`
-        elseif is_unix()
-            command = `$command -Wl,-rpath,\$ORIGIN`
+        command = `$cc -m64 -DJULIAC_PROGRAM_LIBNAME=\"lib$julia_program_basename\" -o $e_file $c_program $s_file $flags`
+        if julia_v07
+            if Sys.isapple()
+                command = `$command -Wl,-rpath,@executable_path`
+            elseif Sys.isunix()
+                command = `$command -Wl,-rpath,\$ORIGIN`
+            end
+        else
+            if is_apple()
+                command = `$command -Wl,-rpath,@executable_path`
+            elseif is_unix()
+                command = `$command -Wl,-rpath,\$ORIGIN`
+            end
         end
         verbose && println("Build executable file \"$e_file\" in build directory:\n  $command")
         run(command)
@@ -267,15 +312,27 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
         libfiles = String[]
         dlext = "." * Libdl.dlext
         for dir in (shlibdir, private_shlibdir)
-            if is_windows() || is_apple()
-                append!(libfiles, joinpath.(dir, filter(x -> endswith(x, dlext), readdir(dir))))
+            if julia_v07
+                if Sys.iswindows() || Sys.isapple()
+                    append!(libfiles, joinpath.(dir, filter(x -> endswith(x, dlext), readdir(dir))))
+                else
+                    append!(libfiles, joinpath.(dir, filter(x -> contains(x, r"^lib.+\.so(?:\.\d+)*$"), readdir(dir))))
+                end
             else
-                append!(libfiles, joinpath.(dir, filter(x -> ismatch(r"^lib.+\.so(?:\.\d+)*$", x), readdir(dir))))
+                if is_windows() || is_apple()
+                    append!(libfiles, joinpath.(dir, filter(x -> endswith(x, dlext), readdir(dir))))
+                else
+                    append!(libfiles, joinpath.(dir, filter(x -> ismatch(r"^lib.+\.so(?:\.\d+)*$", x), readdir(dir))))
+                end
             end
         end
         sync = false
         for src in libfiles
-            ismatch(r"debug", src) && continue
+            if julia_v07
+                contains(src, r"debug") && continue
+            else
+                ismatch(r"debug", src) && continue
+            end
             dst = basename(src)
             if filesize(src) != filesize(dst) || ctime(src) > ctime(dst) || mtime(src) > mtime(dst)
                 verbose && println("  $dst")
