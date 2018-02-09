@@ -22,20 +22,18 @@ function main(args)
         "cprog"
             arg_type = String
             default = nothing
-            help = "C program to compile (required only when building an executable; if not provided a minimal driver program is used)"
-        "builddir"
-            arg_type = String
-            default = "builddir"
-            help = "build directory, either absolute or relative to the Julia program directory"
+            help = "C program to compile (only used when building an executable; if not provided a minimal driver program is used)"
         "--verbose", "-v"
             action = :store_true
             help = "increase verbosity"
         "--quiet", "-q"
             action = :store_true
             help = "suppress non-error messages"
-        "--clean", "-c"
-            action = :store_true
-            help = "delete builddir"
+        "--builddir", "-b"
+            arg_type = String
+            default = "builddir"
+            metavar = "<builddir>"
+            help = "specify build directory, either absolute or relative to the Julia program directory"
         "--sysimage", "-J"
             arg_type = String
             default = nothing
@@ -104,6 +102,9 @@ function main(args)
         "--julialibs", "-j"
             action = :store_true
             help = "sync Julia libraries to builddir"
+        "--clean", "-c"
+            action = :store_true
+            help = "delete build directory"
     end
 
     s.epilog = """
@@ -117,18 +118,17 @@ function main(args)
     parsed_args = parse_args(args, s)
 
     # TODO: in future it may be possible to broadcast dictionary indexing, see: https://discourse.julialang.org/t/accessing-multiple-values-of-a-dictionary/8648
-    if !any(getindex.(parsed_args, ["clean", "object", "shared", "executable", "julialibs"]))
-        parsed_args["quiet"] || println("Nothing to do, exiting\nTry \"$(basename(@__FILE__)) -h\" for more information")
+    if !any(getindex.(parsed_args, ["object", "shared", "executable", "julialibs", "clean"]))
+        parsed_args["quiet"] || println("nothing to do, exiting\ntry \"$(basename(@__FILE__)) -h\" for more information")
         exit(0)
     end
 
     julia_compile(
         parsed_args["juliaprog"],
         parsed_args["cprog"],
-        parsed_args["builddir"],
         parsed_args["verbose"],
         parsed_args["quiet"],
-        parsed_args["clean"],
+        parsed_args["builddir"],
         parsed_args["sysimage"],
         parsed_args["compile"],
         parsed_args["cpu-target"],
@@ -142,14 +142,15 @@ function main(args)
         parsed_args["object"],
         parsed_args["shared"],
         parsed_args["executable"],
-        parsed_args["julialibs"]
+        parsed_args["julialibs"],
+        parsed_args["clean"]
     )
 end
 
-function julia_compile(julia_program, c_program=nothing, build_dir="builddir", verbose=false, quiet=false,
-                       clean=false, sysimage = nothing, compile=nothing, cpu_target=nothing, optimize=nothing,
-                       debug=nothing, inline=nothing, check_bounds=nothing, math_mode=nothing, depwarn=nothing,
-                       autodeps=false, object=false, shared=false, executable=true, julialibs=true)
+function julia_compile(julia_program, c_program=nothing, verbose=false, quiet=false, build_dir="builddir",
+                       sysimage = nothing, compile=nothing, cpu_target=nothing, optimize=nothing, debug=nothing,
+                       inline=nothing, check_bounds=nothing, math_mode=nothing, depwarn=nothing,
+                       autodeps=false, object=false, shared=false, executable=false, julialibs=false, clean=false)
 
     verbose && quiet && (quiet = false)
 
@@ -173,6 +174,11 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
     build_dir = abspath(build_dir)
     quiet || println("Build directory:\n  \"$build_dir\"")
 
+    if !any([object, shared, executable, julialibs, clean])
+        quiet || println("Nothing to do")
+        return
+    end
+
     if clean
         if isdir(build_dir)
             verbose && println("Delete build directory")
@@ -180,6 +186,11 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
         else
             verbose && println("Build directory does not exist, nothing to delete")
         end
+    end
+
+    if !any([object, shared, executable, julialibs])
+        quiet || println("All done")
+        return
     end
 
     if !isdir(build_dir)
@@ -342,6 +353,8 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
         end
         sync || verbose && println("  none")
     end
+
+    quiet || println("All done")
 end
 
 main(ARGS)

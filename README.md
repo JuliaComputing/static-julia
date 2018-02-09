@@ -5,28 +5,28 @@ Building shared libraries and executables from Julia code.
 Run `juliac.jl -h` for help:
 
 ```
-usage: juliac.jl [-v] [-q] [-c] [-J <file>]
+usage: juliac.jl [-v] [-q] [-b <builddir>] [-J <file>]
                  [--compile {yes|no|all|min}] [-C <target>]
                  [-O {0,1,2,3}] [-g {0,1,2}] [--inline {yes|no}]
                  [--check-bounds {yes|no}] [--math-mode {ieee,fast}]
                  [--depwarn {yes|no|error}] [-a] [-o] [-s] [-e] [-j]
-                 [--version] [-h] juliaprog [cprog] [builddir]
+                 [-c] [--version] [-h] juliaprog [cprog]
 
 Static Julia Compiler
 
 positional arguments:
   juliaprog             Julia program to compile
-  cprog                 C program to compile (required only when
-                        building an executable; if not provided a
-                        minimal standard program is used)
-  builddir              build directory, either absolute or relative
-                        to the Julia program directory (default:
-                        "builddir")
+  cprog                 C program to compile (only used when building
+                        an executable; if not provided a minimal
+                        driver program is used)
 
 optional arguments:
   -v, --verbose         increase verbosity
   -q, --quiet           suppress non-error messages
-  -c, --clean           delete builddir
+  -b, --builddir <builddir>
+                        specify build directory, either absolute or
+                        relative to the Julia program directory
+                        (default: "builddir")
   -J, --sysimage <file>
                         start up with the given system image file
   --compile {yes|no|all|min}
@@ -49,6 +49,7 @@ optional arguments:
   -s, --shared          build shared library
   -e, --executable      build executable file
   -j, --julialibs       sync Julia libraries to builddir
+  -c, --clean           delete build directory
   --version             show version information and exit
   -h, --help            show this help message and exit
 
