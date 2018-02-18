@@ -273,13 +273,13 @@ function julia_compile(julia_program, c_program=nothing, build_dir="builddir", v
         command = `$cc -m64 -shared -o $s_file $(joinpath(tmp_dir, o_file)) $flags`
         if julia_v07
             if Sys.isapple()
-                command = `$command -Wl,-install_name,@rpath/\"$s_file\"`
+                command = `$command -Wl,-install_name,@rpath/$s_file`
             elseif Sys.iswindows()
                 command = `$command -Wl,--export-all-symbols`
             end
         else
             if is_apple()
-                command = `$command -Wl,-install_name,@rpath/\"$s_file\"`
+                command = `$command -Wl,-install_name,@rpath/$s_file`
             elseif is_windows()
                 command = `$command -Wl,--export-all-symbols`
             end
