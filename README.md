@@ -1,3 +1,7 @@
+## NOTE: This repository is deprecated. `juliac.jl` has been merged into [PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl). Please install that package to use `juliac.jl`.
+
+----------------------
+
 # Static Julia Compiler
 
 Building shared libraries and executables from Julia code.
