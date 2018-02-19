@@ -1,4 +1,4 @@
-## NOTE: This repository is mainly for experimental purposes. `juliac.jl` has been merged into [PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl). Please install that package to use `juliac.jl`.
+## NOTE: This repository is mainly for purposes of experimentation and no longer expected to be used going forward. `juliac.jl` has been merged into [PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl). Please install that package to use `juliac.jl`.
 
 ----------------------
 
